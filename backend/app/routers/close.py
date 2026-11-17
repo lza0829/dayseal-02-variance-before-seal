@@ -4,6 +4,11 @@ from app.services import close_service as svc
 router = APIRouter(prefix="/close", tags=["close"])
 
 
+@router.get("/policy")
+def policy():
+    return svc.policy()
+
+
 @router.get("/preview")
 def preview(business_day: str | None = None):
     return svc.preview(business_day)
@@ -22,3 +27,8 @@ def batches():
 @router.get("/variances")
 def variances():
     return svc.list_variances()
+
+
+@router.get("/integrity")
+def integrity():
+    return svc.integrity()

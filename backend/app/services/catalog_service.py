@@ -5,6 +5,7 @@ from app.repositories import closes as close_repo
 from app.repositories import lines as line_repo
 from app.repositories import settings as settings_repo
 from app.repositories import tills as till_repo
+from app.variance_policy import describe as describe_policy, label as disposition_label
 
 
 def dashboard() -> dict[str, Any]:
@@ -12,17 +13,22 @@ def dashboard() -> dict[str, Any]:
     try:
         day = settings_repo.get(conn, "business_day") or ""
         total, count = line_repo.day_total(conn, day) if day else (0.0, 0)
-        sealed = close_repo.is_sealed(conn, day) if day else False
+        state = close_repo.day_state(conn, day) if day else {"sealed": False, "locked": False, "disposition": None}
         return {
             "business_day": day,
             "till_count": len(till_repo.list_tills(conn)),
             "line_count_today": count,
             "system_total_today": total,
-            "sealed_today": sealed,
+            "sealed_today": state["sealed"],
+            "locked_today": state["locked"],
+            "disposition_today": state["disposition"],
+            "disposition_label": disposition_label(state["disposition"]),
+            "variance_policy": describe_policy(),
             "close_batch_count": conn.execute("SELECT COUNT(*) c FROM close_batches").fetchone()["c"],
             "open_variance_count": conn.execute(
-                "SELECT COUNT(*) c FROM variance_rows WHERE disposition='pending'"
+                "SELECT COUNT(*) c FROM variance_rows WHERE disposition NOT IN ('balanced','loss','gain')"
             ).fetchone()["c"],
+            "integrity_violation_count": len(close_repo.integrity_violations(conn)),
         }
     finally:
         conn.close()
